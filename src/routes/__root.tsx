@@ -105,6 +105,13 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="en" className="dark">
       <head>
         <HeadContent />
+        {/* Applies the persisted theme before first paint to avoid a dark-mode flash
+            for light-mode users. The `dark` class above is the SSR/no-JS default. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.getItem("theme");if(t==="light"||t==="dark"){document.documentElement.classList.toggle("dark",t==="dark");}}catch(e){}`,
+          }}
+        />
       </head>
       <body className="bg-background text-foreground antialiased">
         {children}

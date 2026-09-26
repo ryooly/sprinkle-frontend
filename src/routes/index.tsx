@@ -1,6 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useRef, useEffect, type PointerEvent as ReactPointerEvent } from "react";
 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
 /* ─── Card data ─────────────────────────────────────────────────────────── */
 const CARDS: Record<string, CardItem[]> = {
   Recommendation: [
@@ -429,6 +438,7 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const [searchExpanded, setSearchExpanded] = useState(false);
+  const [theme, setTheme] = useState<"light" | "dark">("dark");
   const [activeGenre, setActiveGenre] = useState("Recommendation");
   const [repositoryWidth, setRepositoryWidth] = useState(288);
   const [isResizing, setIsResizing] = useState(false);
@@ -449,6 +459,16 @@ function Index() {
     event.currentTarget.setPointerCapture(event.pointerId);
     setIsResizing(true);
   };
+
+  useEffect(() => {
+    const stored = localStorage.getItem("theme");
+    if (stored === "light" || stored === "dark") setTheme(stored);
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", theme === "dark");
+    localStorage.setItem("theme", theme);
+  }, [theme]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -478,7 +498,7 @@ function Index() {
           <button
             type="button"
             aria-label="Open menu"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent text-muted-foreground transition-colors hover:border-border hover:bg-muted/50 hover:text-foreground"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent text-muted-foreground transition-colors hover:border-border hover:bg-muted dark:hover:bg-muted/50 hover:text-foreground"
           >
             <MenuIcon className="h-5 w-5" />
           </button>
@@ -501,7 +521,7 @@ function Index() {
         >
           <div
             className={[
-              "flex items-center gap-2 overflow-hidden rounded-md border border-border bg-background transition-all duration-200 ease-out",
+              "flex items-center gap-2 overflow-hidden rounded-md border border-border bg-card transition-all duration-200 ease-out dark:bg-background",
               searchExpanded
                 ? "h-10 w-full border-ring ring-1 ring-ring px-3 shadow-lg"
                 : "h-8 w-full max-w-md px-2.5 hover:border-muted-foreground/40 focus-within:border-ring focus-within:ring-1 focus-within:ring-ring",
@@ -517,7 +537,7 @@ function Index() {
               className="h-full w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
             />
             {!searchExpanded && (
-              <kbd className="hidden shrink-0 items-center rounded border border-border bg-card px-1.5 py-0.5 text-[10px] font-mono font-medium text-muted-foreground sm:inline-flex">
+              <kbd className="hidden shrink-0 items-center rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-mono font-medium text-muted-foreground sm:inline-flex dark:bg-card">
                 /
               </kbd>
             )}
@@ -525,7 +545,7 @@ function Index() {
               <button
                 type="button"
                 onClick={() => setSearchExpanded(false)}
-                className="mr-1 shrink-0 rounded border border-border bg-card px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                className="mr-1 shrink-0 rounded border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground dark:bg-card"
               >
                 Esc
               </button>
@@ -533,15 +553,66 @@ function Index() {
           </div>
         </div>
 
-        {/* Right: profile avatar */}
-        <div className="ml-auto flex shrink-0 items-center">
+        {/* Right: theme toggle + profile avatar — same h-8 rhythm as the search bar,
+            so the expanded search overlay (z-50) slides over them without layout shifts. */}
+        <div className="ml-auto flex shrink-0 items-center gap-2">
           <button
             type="button"
-            aria-label="Open user menu"
-            className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-border bg-card text-muted-foreground transition-colors hover:border-muted-foreground/50 hover:text-foreground"
+            aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent text-muted-foreground transition-colors hover:border-border hover:bg-muted dark:hover:bg-muted/50 hover:text-foreground"
           >
-            <ProfileIcon className="h-full w-full p-1" />
+            {theme === "dark" ? <SunIcon className="h-4 w-4" /> : <MoonIcon className="h-4 w-4" />}
           </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label="Open user menu"
+                className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-border bg-card text-muted-foreground transition-colors hover:border-muted-foreground/50 hover:text-foreground data-[state=open]:border-muted-foreground/50 data-[state=open]:text-foreground"
+              >
+                <ProfileIcon className="h-full w-full p-1" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48 p-1">
+              {/* User profile header — detached from the menu items by a separator */}
+              <DropdownMenuLabel className="flex items-center gap-2.5 rounded-md px-2 py-2 font-normal">
+                <span
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+                  style={{ background: "#8A3FFC" }}
+                  aria-hidden="true"
+                >
+                  SL
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-xs font-semibold text-foreground">
+                    Sprinkle Labs
+                  </span>
+                  <span className="block truncate text-[11px] text-muted-foreground">
+                    @sprinkle-labs
+                  </span>
+                </span>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator className="-mx-1 mb-1 mt-0.5" />
+              <DropdownMenuItem className="gap-2.5 rounded-md px-2 py-1.5 text-xs">
+                <InventoryIcon className="h-4 w-4 text-muted-foreground" />
+                <span>Inventory</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem className="gap-2.5 rounded-md px-2 py-1.5 text-xs">
+                <SaveIcon className="h-4 w-4 text-muted-foreground" />
+                <span>Save</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem className="gap-2.5 rounded-md px-2 py-1.5 text-xs">
+                <HistoryIcon className="h-4 w-4 text-muted-foreground" />
+                <span>History</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="-mx-1 my-1" />
+              <DropdownMenuItem className="gap-2.5 rounded-md px-2 py-1.5 text-xs">
+                <SettingsIcon className="h-4 w-4 text-muted-foreground" />
+                <span>Settings</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
 
@@ -574,7 +645,7 @@ function Index() {
             <label htmlFor="repo-search" className="sr-only">
               Find a repository
             </label>
-            <div className="flex items-center gap-2 rounded-md border border-border bg-background/80 px-2.5 py-1.5 transition-colors hover:border-muted-foreground/40 focus-within:border-ring focus-within:ring-1 focus-within:ring-ring">
+            <div className="flex items-center gap-2 rounded-md border border-border bg-card px-2.5 py-1.5 transition-colors hover:border-muted-foreground/40 focus-within:border-ring focus-within:ring-1 focus-within:ring-ring dark:bg-background/80">
               <SearchIcon className="h-3.5 w-3.5 text-muted-foreground" />
               <input
                 id="repo-search"
@@ -585,14 +656,15 @@ function Index() {
             </div>
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-col items-center justify-center rounded-lg border border-dashed border-border/80 bg-card/20 p-6 text-center transition-colors hover:border-border">
-            <RepoIcon className="mb-2 h-6 w-6 text-muted-foreground/80" />
-            <p className="text-sm font-medium text-muted-foreground">No repositories yet</p>
+          <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pr-0.5">
+            {(CARDS[activeGenre] ?? []).slice(0, 4).map((card) => (
+              <AppCard key={card.id} card={card} hideAvatar />
+            ))}
           </div>
 
           <button
             type="button"
-            className="mt-3 text-left text-xs font-medium text-muted-foreground transition-colors hover:text-[#58a6ff]"
+            className="mt-3 text-left text-xs font-medium text-muted-foreground transition-colors hover:text-[#0969da] dark:hover:text-[#58a6ff]"
           >
             Show more
           </button>
@@ -657,8 +729,8 @@ function Index() {
                 className={[
                   "h-8 shrink-0 cursor-pointer rounded-full border px-3.5 text-xs font-medium transition-all duration-150",
                   activeGenre === genre
-                    ? "border-[#388bfd]/60 bg-[#388bfd]/15 text-[#58a6ff] shadow-[0_0_12px_rgba(56,139,253,0.15)]"
-                    : "border-border bg-card/60 text-muted-foreground hover:border-muted-foreground/40 hover:bg-card hover:text-foreground active:scale-95",
+                    ? "border-[#0969da]/40 bg-[#0969da]/10 text-[#0969da] shadow-[0_0_12px_rgba(9,105,218,0.12)] dark:border-[#388bfd]/60 dark:bg-[#388bfd]/15 dark:text-[#58a6ff] dark:shadow-[0_0_12px_rgba(56,139,253,0.15)]"
+                    : "border-border bg-card text-muted-foreground hover:border-muted-foreground/50 hover:bg-accent hover:text-foreground active:scale-95 dark:bg-card/60 dark:hover:bg-card",
                 ].join(" ")}
               >
                 {genre}
@@ -713,23 +785,35 @@ function formatClaps(n: number): string {
   return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
 }
 
-function AppCard({ card }: { card: CardItem }) {
+function AppCard({ card, hideAvatar }: { card: CardItem; hideAvatar?: boolean }) {
   const color = avatarColor(card.user);
   const initials = card.user.slice(0, 2).toUpperCase();
+
+  // Sidebar cards: original card surface fading into a silvery tone (token-driven,
+  // so it reads subtly in both themes). Home cards keep a solid surface that
+  // stands clear of the page background.
+  const surface = hideAvatar
+    ? "bg-gradient-to-r from-card via-card/95 to-secondary hover:to-accent"
+    : "bg-card hover:bg-accent/40 dark:bg-card dark:hover:bg-popover";
 
   return (
     <button
       type="button"
-      className="group flex w-full items-start gap-3 overflow-hidden rounded-lg border border-border/40 bg-card/40 px-3.5 py-3 text-left transition-all duration-150 hover:border-border/70 hover:bg-card/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99]"
+      className={[
+        "group flex w-full items-start gap-3 overflow-hidden rounded-lg border border-border px-3.5 py-3 text-left shadow-sm transition-all duration-150 hover:border-foreground/30 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99] dark:shadow-[0_1px_3px_rgba(0,0,0,0.4)] dark:hover:border-muted-foreground/40",
+        surface,
+      ].join(" ")}
     >
-      {/* Avatar */}
-      <span
-        className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
-        style={{ background: color }}
-        aria-hidden="true"
-      >
-        {initials}
-      </span>
+      {/* Avatar — omitted in compact sidebar cards */}
+      {!hideAvatar && (
+        <span
+          className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
+          style={{ background: color }}
+          aria-hidden="true"
+        >
+          {initials}
+        </span>
+      )}
 
       {/* Content */}
       <span className="min-w-0 flex-1">
@@ -744,16 +828,16 @@ function AppCard({ card }: { card: CardItem }) {
           </span>
         </span>
 
-        {/* Metadata row */}
-        <span className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono">
+        {/* Metadata row — fixed 2×2 grid so every card keeps an identical height */}
+        <span className="mt-1.5 grid h-[36px] shrink-0 grid-cols-2 content-start gap-x-3 gap-y-1 overflow-hidden font-mono">
           {/* Genre */}
-          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-muted-foreground/70">
+          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-muted-foreground dark:text-muted-foreground/70">
             <CardGenreIcon genre={card.genre} className="h-3 w-3 shrink-0" />
             {card.genre}
           </span>
 
           {/* Views */}
-          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-muted-foreground/70">
+          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-muted-foreground dark:text-muted-foreground/70">
             <CardEyeIcon className="h-3 w-3 shrink-0" />
             {card.views}
           </span>
@@ -762,7 +846,9 @@ function AppCard({ card }: { card: CardItem }) {
           <span
             className={[
               "inline-flex items-center gap-1 text-[11px] font-semibold",
-              card.status === "active" ? "text-emerald-500" : "text-muted-foreground/50",
+              card.status === "active"
+                ? "text-emerald-600 dark:text-emerald-500"
+                : "text-muted-foreground dark:text-muted-foreground/50",
             ].join(" ")}
           >
             <CardStatusIcon status={card.status} className="h-3 w-3 shrink-0" />
@@ -770,7 +856,7 @@ function AppCard({ card }: { card: CardItem }) {
           </span>
 
           {/* Claps */}
-          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-muted-foreground/70">
+          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-muted-foreground dark:text-muted-foreground/70">
             <CardClapsIcon className="h-3 w-3 shrink-0" />
             {formatClaps(card.claps)}
           </span>
@@ -889,10 +975,79 @@ function SprinkleLogo({ className }: { className?: string }) {
   );
 }
 
+function SunIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.773-1.591 1.591M5.25 12H3m4.707-7.05-1.591 1.591M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" />
+    </svg>
+  );
+}
+
+function MoonIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
+    </svg>
+  );
+}
+
 function ProfileIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
       <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0Zm0 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13Zm0 2a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5Zm0 7c2.145 0 4.057.74 5.5 1.982-.79 1.786-2.653 3.268-5.5 3.268-2.847 0-4.71-1.482-5.5-3.268C3.943 11.24 5.855 10.5 8 10.5Z" />
+    </svg>
+  );
+}
+
+/* ─── Profile menu item icons (Octicons-style, 16×16) ──────────────────── */
+
+function InventoryIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+      <path d="M8.06 2 2 5.08v6.4a.25.25 0 0 0 .37.22L8 9.5l5.63 2.2a.25.25 0 0 0 .37-.22v-6.4L8.06 2ZM1.77 4.03a1.75 1.75 0 0 1 1.55 0L8 6.28l4.68-2.25a1.75 1.75 0 0 1 1.9.17c.53.42.92 1.04.92 1.77v6.4a1.75 1.75 0 0 1-2.32 1.66L8 11.72l-5.18 2.31A1.75 1.75 0 0 1 .5 12.37v-6.4c0-.73.39-1.35.92-1.77a1.75 1.75 0 0 1 .35-.17Z" />
+    </svg>
+  );
+}
+
+function SaveIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+      <path d="M2 2.75C2 1.784 2.784 1 3.75 1h8.5c.966 0 1.75.784 1.75 1.75v11.5a.75.75 0 0 1-1.124.65L8 12.822l-4.876 2.078A.75.75 0 0 1 2 14.25V2.75Zm3.5-.25a.25.25 0 0 0-.25.25v9l3.158-1.348a.75.75 0 0 1 .684 0L12.75 12V2.75a.25.25 0 0 0-.25-.25h-7Z" />
+    </svg>
+  );
+}
+
+function HistoryIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+      <path d="M1.643 3.143.427 1.927A.25.25 0 0 0 .025 2v2.75a.25.25 0 0 0 .25.25h2.75a.25.25 0 0 0 .073-.403L1.97 3.298a6.5 6.5 0 1 1-1.18 4.458.75.75 0 1 0-1.49.19A8 8 0 1 0 1.643 3.143ZM7.25 4.75v4.5a.75.75 0 0 0 1.172.623l2.75-1.833a.75.75 0 1 0-.836-1.252L8.75 7.612V4.75a.75.75 0 0 0-1.5 0Z" />
+    </svg>
+  );
+}
+
+function SettingsIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+      <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492ZM6.054 8a1.946 1.946 0 1 1 3.892 0 1.946 1.946 0 0 1-3.892 0Z" />
+      <path d="M9.835.886 10.53.276a.75.75 0 0 1 1.016.093l1.09 1.255a.75.75 0 0 1-.093 1.067l-.65.52a4.7 4.7 0 0 1 .958.94l.627-.525a.75.75 0 0 1 1.073.085l.922 1.38a.75.75 0 0 1-.223 1.002l-.7.48a4.8 4.8 0 0 1 0 1.12l.7.479a.75.75 0 0 1 .224 1.002l-.923 1.38a.75.75 0 0 1-1.073.085l-.626-.525c-.263.363-.583.684-.941.95l.65.52a.75.75 0 0 1 .093 1.067l-1.09 1.255a.75.75 0 0 1-1.016.093l-.696-.61a4.6 4.6 0 0 1-1.194 0l-.695.61a.75.75 0 0 1-1.017-.093l-1.089-1.255a.75.75 0 0 1 .093-1.067l.65-.52a4.7 4.7 0 0 1-.941-.95l-.627.525a.75.75 0 0 1-1.073-.085l-.921-1.38a.75.75 0 0 1 .223-1.002l.7-.48a4.8 4.8 0 0 1 0-1.12l-.7-.479a.75.75 0 0 1-.224-1.002l.923-1.38a.75.75 0 0 1 1.073-.085l.626.525c.263-.363.583-.684.941-.95l-.65-.52a.75.75 0 0 1-.093-1.067l1.09-1.255a.75.75 0 0 1 1.016-.093l.696.61c.392-.067.8-.067 1.194 0ZM8 1.8a6.2 6.2 0 0 0-.69.04l-.925-.81a2.25 2.25 0 0 0-3.048.279L2.238 2.564a2.25 2.25 0 0 0 .279 3.048l.81.925A6.2 6.2 0 0 0 3.055 8a6.2 6.2 0 0 0 .272 1.463l-.81.925a2.25 2.25 0 0 0-.279 3.048l1.099 1.255a2.25 2.25 0 0 0 3.048.279l.925-.81A6.2 6.2 0 0 0 8 14.2a6.2 6.2 0 0 0 1.463-.272l.925.81a2.25 2.25 0 0 0 3.048-.279l1.099-1.255a2.25 2.25 0 0 0-.279-3.048l-.81-.925c.176-.47.272-.977.272-1.463a6.2 6.2 0 0 0-.272-1.463l.81-.925a2.25 2.25 0 0 0 .279-3.048L13.436 2.564a2.25 2.25 0 0 0-3.048-.279l-.925.81A6.2 6.2 0 0 0 8 1.8Z" />
     </svg>
   );
 }
