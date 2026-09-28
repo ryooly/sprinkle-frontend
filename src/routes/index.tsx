@@ -1,5 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useRef, useEffect, type PointerEvent as ReactPointerEvent } from "react";
+import { Bookmark, Package, RotateCcwClock, Settings, ThumbsUp } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -416,6 +417,10 @@ type CardItem = {
   claps: number;
 };
 
+/* Fixed "Top repositories" sidebar list — intentionally distinct from the
+   category-driven CARDS grid, so it never changes when switching genres. */
+const TOP_REPOS: CardItem[] = CARDS["Recommendation"] ?? [];
+
 export const Route = createFileRoute("/")({
   component: Index,
   head: () => ({
@@ -595,20 +600,19 @@ function Index() {
               </DropdownMenuLabel>
               <DropdownMenuSeparator className="-mx-1 mb-1 mt-0.5" />
               <DropdownMenuItem className="gap-2.5 rounded-md px-2 py-1.5 text-xs">
-                <InventoryIcon className="h-4 w-4 text-muted-foreground" />
+                <Package className="h-4 w-4 text-muted-foreground" />
                 <span>Inventory</span>
               </DropdownMenuItem>
               <DropdownMenuItem className="gap-2.5 rounded-md px-2 py-1.5 text-xs">
-                <SaveIcon className="h-4 w-4 text-muted-foreground" />
+                <Bookmark className="h-4 w-4 text-muted-foreground" />
                 <span>Save</span>
               </DropdownMenuItem>
               <DropdownMenuItem className="gap-2.5 rounded-md px-2 py-1.5 text-xs">
-                <HistoryIcon className="h-4 w-4 text-muted-foreground" />
+                <RotateCcwClock className="h-4 w-4 text-muted-foreground" />
                 <span>History</span>
               </DropdownMenuItem>
-              <DropdownMenuSeparator className="-mx-1 my-1" />
               <DropdownMenuItem className="gap-2.5 rounded-md px-2 py-1.5 text-xs">
-                <SettingsIcon className="h-4 w-4 text-muted-foreground" />
+                <Settings className="h-4 w-4 text-muted-foreground" />
                 <span>Settings</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -657,7 +661,7 @@ function Index() {
           </div>
 
           <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pr-0.5">
-            {(CARDS[activeGenre] ?? []).slice(0, 4).map((card) => (
+            {TOP_REPOS.slice(0, 4).map((card) => (
               <AppCard key={card.id} card={card} hideAvatar />
             ))}
           </div>
@@ -778,7 +782,7 @@ const AVATAR_COLORS = [
 ] as const;
 
 function avatarColor(user: string): string {
-  return AVATAR_COLORS[user.charCodeAt(0) % AVATAR_COLORS.length];
+  return AVATAR_COLORS[user.charCodeAt(0) % AVATAR_COLORS.length] ?? "#4f46e5";
 }
 
 function formatClaps(n: number): string {
@@ -788,6 +792,16 @@ function formatClaps(n: number): string {
 function AppCard({ card, hideAvatar }: { card: CardItem; hideAvatar?: boolean }) {
   const color = avatarColor(card.user);
   const initials = card.user.slice(0, 2).toUpperCase();
+  const navigate = useNavigate();
+
+  // Clicking an extension opens its detail page, carrying the uploader name
+  const openExtension = () => {
+    void navigate({
+      to: "/extensions/$slug",
+      params: { slug: card.repo },
+      search: { user: card.user },
+    });
+  };
 
   // Sidebar cards: original card surface fading into a silvery tone (token-driven,
   // so it reads subtly in both themes). Home cards keep a solid surface that
@@ -796,11 +810,47 @@ function AppCard({ card, hideAvatar }: { card: CardItem; hideAvatar?: boolean })
     ? "bg-gradient-to-r from-card via-card/95 to-secondary hover:to-accent"
     : "bg-card hover:bg-accent/40 dark:bg-card dark:hover:bg-popover";
 
+  const metaItems = (
+    <>
+      {/* Genre */}
+      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-muted-foreground dark:text-muted-foreground/70">
+        <CardGenreIcon genre={card.genre} className="h-3 w-3 shrink-0" />
+        {card.genre}
+      </span>
+
+      {/* Views */}
+      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-muted-foreground dark:text-muted-foreground/70">
+        <CardEyeIcon className="h-3 w-3 shrink-0" />
+        {card.views}
+      </span>
+
+      {/* Status */}
+      <span
+        className={[
+          "inline-flex items-center gap-1 text-[11px] font-semibold",
+          card.status === "active"
+            ? "text-emerald-600 dark:text-emerald-500"
+            : "text-muted-foreground dark:text-muted-foreground/50",
+        ].join(" ")}
+      >
+        <CardStatusIcon status={card.status} className="h-3 w-3 shrink-0" />
+        {card.status === "active" ? "Active" : "Archived"}
+      </span>
+
+      {/* Claps */}
+      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-muted-foreground dark:text-muted-foreground/70">
+        <ThumbsUp className="h-3 w-3 shrink-0" />
+        {formatClaps(card.claps)}
+      </span>
+    </>
+  );
+
   return (
     <button
       type="button"
+      onClick={openExtension}
       className={[
-        "group flex w-full items-start gap-3 overflow-hidden rounded-lg border border-border px-3.5 py-3 text-left shadow-sm transition-all duration-150 hover:border-foreground/30 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99] dark:shadow-[0_1px_3px_rgba(0,0,0,0.4)] dark:hover:border-muted-foreground/40",
+        "group flex w-full items-stretch gap-3 overflow-hidden rounded-lg border border-border px-3.5 py-3 text-left shadow-sm transition-all duration-150 hover:border-foreground/30 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99] dark:shadow-[0_1px_3px_rgba(0,0,0,0.4)] dark:hover:border-muted-foreground/40",
         surface,
       ].join(" ")}
     >
@@ -816,7 +866,7 @@ function AppCard({ card, hideAvatar }: { card: CardItem; hideAvatar?: boolean })
       )}
 
       {/* Content */}
-      <span className="min-w-0 flex-1">
+      <span className="flex min-w-0 flex-1 flex-col">
         {/* username/repo title */}
         <span className="block truncate font-mono text-[13px] leading-snug">
           <span className="text-muted-foreground transition-colors group-hover:text-foreground/70">
@@ -828,39 +878,17 @@ function AppCard({ card, hideAvatar }: { card: CardItem; hideAvatar?: boolean })
           </span>
         </span>
 
-        {/* Metadata row — fixed 2×2 grid so every card keeps an identical height */}
-        <span className="mt-1.5 grid h-[36px] shrink-0 grid-cols-2 content-start gap-x-3 gap-y-1 overflow-hidden font-mono">
-          {/* Genre */}
-          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-muted-foreground dark:text-muted-foreground/70">
-            <CardGenreIcon genre={card.genre} className="h-3 w-3 shrink-0" />
-            {card.genre}
+        {/* Metadata — home cards use a single uncluttered row pinned to the bottom;
+            sidebar cards keep the fixed 2×2 grid for uniform heights */}
+        {hideAvatar ? (
+          <span className="mt-1.5 grid h-[36px] shrink-0 grid-cols-2 content-start gap-x-3 gap-y-1 overflow-hidden font-mono">
+            {metaItems}
           </span>
-
-          {/* Views */}
-          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-muted-foreground dark:text-muted-foreground/70">
-            <CardEyeIcon className="h-3 w-3 shrink-0" />
-            {card.views}
+        ) : (
+          <span className="mt-auto flex h-5 shrink-0 items-center gap-3 overflow-hidden pt-1.5 font-mono whitespace-nowrap">
+            {metaItems}
           </span>
-
-          {/* Status */}
-          <span
-            className={[
-              "inline-flex items-center gap-1 text-[11px] font-semibold",
-              card.status === "active"
-                ? "text-emerald-600 dark:text-emerald-500"
-                : "text-muted-foreground dark:text-muted-foreground/50",
-            ].join(" ")}
-          >
-            <CardStatusIcon status={card.status} className="h-3 w-3 shrink-0" />
-            {card.status === "active" ? "Active" : "Archived"}
-          </span>
-
-          {/* Claps */}
-          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-muted-foreground dark:text-muted-foreground/70">
-            <CardClapsIcon className="h-3 w-3 shrink-0" />
-            {formatClaps(card.claps)}
-          </span>
-        </span>
+        )}
       </span>
     </button>
   );
@@ -918,14 +946,6 @@ function CardStatusIcon({
   return (
     <svg className={className} viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
       <path d="M4 7V5a4 4 0 0 1 8 0v2h.5A1.5 1.5 0 0 1 14 8.5v5A1.5 1.5 0 0 1 12.5 15h-9A1.5 1.5 0 0 1 2 13.5v-5A1.5 1.5 0 0 1 3.5 7H4Zm2 0h4V5a2 2 0 1 0-4 0v2Zm2 3a1 1 0 0 0-1 1v.5a1 1 0 0 0 2 0V11a1 1 0 0 0-1-1Z" />
-    </svg>
-  );
-}
-
-function CardClapsIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-      <path d="M8.5 1.5a1 1 0 0 1 1.415 0l.585.585.585-.585a1 1 0 0 1 1.415 1.415l-.585.585.585.585a1 1 0 0 1-1.415 1.415L10.5 5l-.585.585A1 1 0 0 1 8.5 4.17V3.5l-.585.585a1 1 0 0 1-1.415 0L6 3.5v.67a1 1 0 0 1-1.415 1.415L4 5l-.585.585A1 1 0 0 1 2 4.17V3.5a1 1 0 0 1 1-1h.17l.415-.415a1 1 0 0 1 1.415 0L5.585 2.5 6 2.085A1 1 0 0 1 7 1.75V1.5h1.5ZM3 7.5A4.5 4.5 0 0 0 7.5 12h1A4.5 4.5 0 0 0 13 7.5V7h-1.5v.5A3 3 0 0 1 8.5 10.5h-1A3 3 0 0 1 4.5 7.5V7H3v.5Z" />
     </svg>
   );
 }
@@ -1018,39 +1038,6 @@ function ProfileIcon({ className }: { className?: string }) {
 }
 
 /* ─── Profile menu item icons (Octicons-style, 16×16) ──────────────────── */
-
-function InventoryIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-      <path d="M8.06 2 2 5.08v6.4a.25.25 0 0 0 .37.22L8 9.5l5.63 2.2a.25.25 0 0 0 .37-.22v-6.4L8.06 2ZM1.77 4.03a1.75 1.75 0 0 1 1.55 0L8 6.28l4.68-2.25a1.75 1.75 0 0 1 1.9.17c.53.42.92 1.04.92 1.77v6.4a1.75 1.75 0 0 1-2.32 1.66L8 11.72l-5.18 2.31A1.75 1.75 0 0 1 .5 12.37v-6.4c0-.73.39-1.35.92-1.77a1.75 1.75 0 0 1 .35-.17Z" />
-    </svg>
-  );
-}
-
-function SaveIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-      <path d="M2 2.75C2 1.784 2.784 1 3.75 1h8.5c.966 0 1.75.784 1.75 1.75v11.5a.75.75 0 0 1-1.124.65L8 12.822l-4.876 2.078A.75.75 0 0 1 2 14.25V2.75Zm3.5-.25a.25.25 0 0 0-.25.25v9l3.158-1.348a.75.75 0 0 1 .684 0L12.75 12V2.75a.25.25 0 0 0-.25-.25h-7Z" />
-    </svg>
-  );
-}
-
-function HistoryIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-      <path d="M1.643 3.143.427 1.927A.25.25 0 0 0 .025 2v2.75a.25.25 0 0 0 .25.25h2.75a.25.25 0 0 0 .073-.403L1.97 3.298a6.5 6.5 0 1 1-1.18 4.458.75.75 0 1 0-1.49.19A8 8 0 1 0 1.643 3.143ZM7.25 4.75v4.5a.75.75 0 0 0 1.172.623l2.75-1.833a.75.75 0 1 0-.836-1.252L8.75 7.612V4.75a.75.75 0 0 0-1.5 0Z" />
-    </svg>
-  );
-}
-
-function SettingsIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-      <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492ZM6.054 8a1.946 1.946 0 1 1 3.892 0 1.946 1.946 0 0 1-3.892 0Z" />
-      <path d="M9.835.886 10.53.276a.75.75 0 0 1 1.016.093l1.09 1.255a.75.75 0 0 1-.093 1.067l-.65.52a4.7 4.7 0 0 1 .958.94l.627-.525a.75.75 0 0 1 1.073.085l.922 1.38a.75.75 0 0 1-.223 1.002l-.7.48a4.8 4.8 0 0 1 0 1.12l.7.479a.75.75 0 0 1 .224 1.002l-.923 1.38a.75.75 0 0 1-1.073.085l-.626-.525c-.263.363-.583.684-.941.95l.65.52a.75.75 0 0 1 .093 1.067l-1.09 1.255a.75.75 0 0 1-1.016.093l-.696-.61a4.6 4.6 0 0 1-1.194 0l-.695.61a.75.75 0 0 1-1.017-.093l-1.089-1.255a.75.75 0 0 1 .093-1.067l.65-.52a4.7 4.7 0 0 1-.941-.95l-.627.525a.75.75 0 0 1-1.073-.085l-.921-1.38a.75.75 0 0 1 .223-1.002l.7-.48a4.8 4.8 0 0 1 0-1.12l-.7-.479a.75.75 0 0 1-.224-1.002l.923-1.38a.75.75 0 0 1 1.073-.085l.626.525c.263-.363.583-.684.941-.95l-.65-.52a.75.75 0 0 1-.093-1.067l1.09-1.255a.75.75 0 0 1 1.016-.093l.696.61c.392-.067.8-.067 1.194 0ZM8 1.8a6.2 6.2 0 0 0-.69.04l-.925-.81a2.25 2.25 0 0 0-3.048.279L2.238 2.564a2.25 2.25 0 0 0 .279 3.048l.81.925A6.2 6.2 0 0 0 3.055 8a6.2 6.2 0 0 0 .272 1.463l-.81.925a2.25 2.25 0 0 0-.279 3.048l1.099 1.255a2.25 2.25 0 0 0 3.048.279l.925-.81A6.2 6.2 0 0 0 8 14.2a6.2 6.2 0 0 0 1.463-.272l.925.81a2.25 2.25 0 0 0 3.048-.279l1.099-1.255a2.25 2.25 0 0 0-.279-3.048l-.81-.925c.176-.47.272-.977.272-1.463a6.2 6.2 0 0 0-.272-1.463l.81-.925a2.25 2.25 0 0 0 .279-3.048L13.436 2.564a2.25 2.25 0 0 0-3.048-.279l-.925.81A6.2 6.2 0 0 0 8 1.8Z" />
-    </svg>
-  );
-}
 
 function PlusIcon({ className }: { className?: string }) {
   return (
